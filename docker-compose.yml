@@ -1,0 +1,31 @@
+services:
+  parrotsec-ai:
+    build: .
+    image: parrotsec-ai:latest
+    container_name: parrotsec-ai
+    hostname: parrotsec-ai
+    stdin_open: true
+    tty: true
+    ports:
+      - "${LLAMA_PORT:-8001}:${LLAMA_PORT:-8001}"
+    environment:
+      # Model spec — see README "Choosing a model" for accepted forms.
+      LLAMA_MODEL: "${LLAMA_MODEL:-}"
+      LLAMA_CTX_SIZE: "${LLAMA_CTX_SIZE:-131072}"
+      LLAMA_HOST: "${LLAMA_HOST:-0.0.0.0}"
+      LLAMA_PORT: "${LLAMA_PORT:-8001}"
+      LLAMA_CACHE: "${LLAMA_CACHE:-/models}"
+      LLAMA_EXTRA_ARGS: "${LLAMA_EXTRA_ARGS:-}"
+    volumes:
+      - ./workspace:/workspace
+      - ./models:/models
+      - ./claude:/root/.claude
+    # NVIDIA GPU acceleration (requires nvidia-container-toolkit on host).
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

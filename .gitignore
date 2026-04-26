@@ -1,0 +1,8 @@
+workspace/*
+!workspace/CLAUDE.md
+claude/*
+!claude/.gitkeep
+.claude/
+models/*
+!models/.gitkeep
+!models/README.md
