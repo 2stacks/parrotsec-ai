@@ -41,6 +41,10 @@ The first Linux build takes 5–15 minutes (compiling llama.cpp with CUDA). Rebu
 
 The `jq` patch **merges** into any existing `settings.json` (because `./claude` is a bind mount that persists across container rebuilds), so user preferences are kept.
 
+**`--reasoning off` is mandatory for the recommended models.** The recommended Qwen3-family abliterated GGUFs (the 27B Qwen3.6 on Linux/CUDA and the 9B Qwen3.5 on Apple Silicon) are thinking-by-default. Without `--reasoning off`, llama-server returns Anthropic-shaped responses with a `thinking` content block but no `text` block until the model finishes its chain-of-thought, which Claude Code reads as an empty response and stalls on. The Linux entrypoint passes the flag by default; the README's macOS llama-server invocation includes it explicitly. Override via `LLAMA_EXTRA_ARGS=--reasoning=on` (the last `--reasoning` on the command line wins). If you swap to a non-thinking model the flag is harmless, so don't strip it from the entrypoint defensively.
+
+**`LLAMA_CACHE` controls llama.cpp's `-hf` download path on both platforms.** Inside the Linux container it defaults to `/models` (set in the Dockerfile). On the macOS host the env var is *unset* by default — llama.cpp falls back to `~/.cache/huggingface/hub/`. The macOS README invocation prepends `LLAMA_CACHE=$(pwd)/models` so downloads land in the project's `./models/` directory like the Linux flow. Keep that prefix on any new macOS llama-server invocations you document.
+
 **LLAMA_MODEL resolution order** (`entrypoint.sh`): absolute path → filename in `$LLAMA_CACHE` (default `/models`) → assumed HuggingFace repo spec passed to `llama-server -hf`. If `LLAMA_MODEL` is unset, the container starts but `llama-server` does **not** — Claude Code can still hit the hosted Anthropic API after the user unsets `ANTHROPIC_BASE_URL`/`ANTHROPIC_API_KEY` for that session.
 
 **Two CLAUDE.md files, two purposes.**

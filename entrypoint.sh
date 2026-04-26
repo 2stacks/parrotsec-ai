@@ -52,6 +52,11 @@ else
     # --kv-unified is the llama.cpp half of the Claude Code KV-cache fix; it
     # pairs with the settings.json env vars above. Quantized KV cache + flash
     # attention come from Unsloth's recommended llama-server invocation.
+    # --reasoning off skips the model's thinking phase — the recommended
+    # Qwen3-family abliterated models think by default, and Claude Code stalls
+    # waiting for content while the model burns thousands of tokens on
+    # internal reasoning. Override via LLAMA_EXTRA_ARGS=--reasoning=on if you
+    # want chain-of-thought.
     # shellcheck disable=SC2086
     llama-server \
         "${MODEL_ARGS[@]}" \
@@ -61,6 +66,7 @@ else
         --kv-unified \
         --cache-type-k q8_0 --cache-type-v q8_0 \
         --flash-attn on --fit on \
+        --reasoning off \
         $LLAMA_EXTRA_ARGS \
         >/var/log/llama-server.log 2>&1 &
 
