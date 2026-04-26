@@ -203,7 +203,49 @@ LLAMA_MODEL=mradermacher/Huihui-Qwen3.6-27B-abliterated-GGUF:Q4_K_M docker compo
 
 Read the [Disclaimer](#disclaimer) before using an abliterated model.
 
-## GPU acceleration
+## Running on Apple Silicon (M-series) Macs
+
+Docker Desktop on macOS cannot pass Metal/MPS into containers, so the
+bundled CUDA llama.cpp build doesn't help you on a Mac. The Mac flow runs
+`llama-server` natively on the host (with full Metal acceleration) and
+points the container at it via `host.docker.internal`.
+
+1. **Install and start `llama-server` on the Mac:**
+
+   ```sh
+   brew install llama.cpp
+   llama-server -hf mradermacher/Huihui-Qwen3.6-27B-abliterated-GGUF:Q4_K_M \
+       --port 8001 \
+       --kv-unified \
+       --cache-type-k q8_0 --cache-type-v q8_0 \
+       --flash-attn on --fit on \
+       --ctx-size 131072
+   ```
+
+   The `--kv-unified` flag is the llama.cpp half of the [Claude Code KV-cache
+   fix](#the-claude-code-kv-cache-fix); keep it.
+
+2. **Build and run the macOS variant of the container** in another terminal.
+   It uses [`Dockerfile.macos`](Dockerfile.macos) (no CUDA, no in-container
+   `llama-server`) and routes Claude Code at the host's `llama-server`:
+
+   ```sh
+   docker compose -f docker-compose.macos.yml up -d --build
+   docker compose -f docker-compose.macos.yml exec parrotsec-ai bash
+   # inside: claude --model llama
+   ```
+
+The macOS image ships the same Parrot toolset, Claude Code, workspace
+`CLAUDE.md`, and entrypoint-side KV-cache fix — it just outsources the
+model server to the host so inference uses Apple Silicon's GPU instead of
+running CPU-only inside Docker Desktop's Linux VM.
+
+To bring it down:
+```sh
+docker compose -f docker-compose.macos.yml down
+```
+
+## GPU acceleration (Linux + NVIDIA)
 
 NVIDIA GPU passthrough is enabled by default in `docker-compose.yml`. The host
 must have the

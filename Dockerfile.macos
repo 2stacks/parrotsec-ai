@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+#
+# macOS / Apple Silicon variant. Docker Desktop on Mac cannot pass Metal/MPS
+# into containers, so the bundled CUDA llama.cpp build is omitted. Run
+# llama-server natively on the Mac (`brew install llama.cpp`) and let this
+# container reach it via host.docker.internal. See README "Running on Apple
+# Silicon (M-series) Macs".
+
+FROM parrotsec/security:latest
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Claude Code → host-side llama-server. Override the port via the compose
+# file if your host llama-server uses something other than 8001.
+ENV ANTHROPIC_BASE_URL=http://host.docker.internal:8001
+ENV ANTHROPIC_API_KEY=sk-no-key-required
+ENV ANTHROPIC_AUTH_TOKEN=
+
+RUN echo 'deb https://bunny.deb.parrot.sh/parrot echo main contrib non-free non-free-firmware' > /etc/apt/sources.list \
+    && rm -f /etc/apt/sources.list.d/*.list \
+    && apt-get update \
+    && apt-get upgrade -y --fix-missing \
+    && apt-get install -y --no-install-recommends \
+        jq \
+        ripgrep \
+        zstd \
+        ca-certificates \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g @anthropic-ai/claude-code
+
+WORKDIR /workspace
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/bin/bash"]

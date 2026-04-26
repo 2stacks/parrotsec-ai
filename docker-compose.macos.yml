@@ -1,0 +1,18 @@
+services:
+  parrotsec-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile.macos
+    image: parrotsec-ai:macos
+    container_name: parrotsec-ai
+    hostname: parrotsec-ai
+    stdin_open: true
+    tty: true
+    environment:
+      # Claude Code talks to llama-server running natively on the Mac host.
+      ANTHROPIC_BASE_URL: "http://host.docker.internal:${LLAMA_PORT:-8001}"
+    volumes:
+      - ./workspace:/workspace
+      - ./claude:/root/.claude
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
