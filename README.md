@@ -141,6 +141,11 @@ If `LLAMA_MODEL` is unset the container starts but `llama-server` does not.
 You can launch it manually after attaching, or rely on `claude` against the
 hosted Anthropic API.
 
+The entrypoint passes `--reasoning off` to `llama-server` so the
+recommended thinking-by-default Qwen3 abliterated models reply
+directly. Override with `LLAMA_EXTRA_ARGS=--reasoning=on` if you want
+chain-of-thought.
+
 ## Using Claude Code
 
 `ANTHROPIC_BASE_URL=http://localhost:8001` and `ANTHROPIC_API_KEY=sk-no-key-required`
@@ -201,6 +206,10 @@ ships GGUFs of `huihui_ai`'s abliterated Qwen 3.6 27B in quants from `Q2_K`
 LLAMA_MODEL=mradermacher/Huihui-Qwen3.6-27B-abliterated-GGUF:Q4_K_M docker compose up -d
 ```
 
+On Apple Silicon the 27B doesn't fit comfortably in unified memory; see
+[Running on Apple Silicon](#running-on-apple-silicon-m-series-macs) for
+the 9B Qwen3.5 abliterated build used there instead.
+
 Read the [Disclaimer](#disclaimer) before using an abliterated model.
 
 ## Running on Apple Silicon (M-series) Macs
@@ -208,22 +217,32 @@ Read the [Disclaimer](#disclaimer) before using an abliterated model.
 Docker Desktop on macOS cannot pass Metal/MPS into containers, so the
 bundled CUDA llama.cpp build doesn't help you on a Mac. The Mac flow runs
 `llama-server` natively on the host (with full Metal acceleration) and
-points the container at it via `host.docker.internal`.
+points the container at it via `host.docker.internal`. Use the 9B
+Qwen3.5 abliterated build — the 27B used on Linux+CUDA is too large for
+typical M-series unified memory.
 
-1. **Install and start `llama-server` on the Mac:**
+1. **Install and start `llama-server` on the Mac.** Either install via
+   Homebrew (`brew install llama.cpp`) or download a precompiled macOS
+   build from <https://github.com/ggml-org/llama.cpp/releases>. Then,
+   from the repo root:
 
    ```sh
-   brew install llama.cpp
-   llama-server -hf mradermacher/Huihui-Qwen3.6-27B-abliterated-GGUF:Q4_K_M \
+   LLAMA_CACHE=$(pwd)/models llama-server \
+       -hf mradermacher/Huihui-Qwen3.5-9B-abliterated-GGUF:Q4_K_M \
        --port 8001 \
        --kv-unified \
        --cache-type-k q8_0 --cache-type-v q8_0 \
        --flash-attn on --fit on \
+       --reasoning off \
        --ctx-size 131072
    ```
 
-   The `--kv-unified` flag is the llama.cpp half of the [Claude Code KV-cache
-   fix](#the-claude-code-kv-cache-fix); keep it.
+   `LLAMA_CACHE=$(pwd)/models` redirects HuggingFace downloads into
+   `./models/`, matching the Linux flow. `--reasoning off` skips the
+   model's thinking phase — the recommended abliterated builds are
+   thinking-by-default and Claude Code stalls waiting on the chain-of-
+   thought block. `--kv-unified` is the llama.cpp half of the
+   [Claude Code KV-cache fix](#the-claude-code-kv-cache-fix); keep it.
 
 2. **Build and run the macOS variant of the container** in another terminal.
    It uses [`Dockerfile.macos`](Dockerfile.macos) (no CUDA, no in-container
